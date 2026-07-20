@@ -202,6 +202,22 @@ def daily_totals():
     return success(data=data, count=len(data))
 
 
+@sales_bp.route("/items", methods=["GET"])
+@token_required
+def distinct_items():
+    """Return the sorted list of distinct item names (for dropdowns)."""
+    items = sorted(get_db()[COLLECTION].distinct("item_name"))
+    return success(items=items, total=len(items))
+
+
+@sales_bp.route("/categories", methods=["GET"])
+@token_required
+def distinct_categories():
+    """Return the sorted list of distinct categories (for dropdowns)."""
+    categories = sorted(get_db()[COLLECTION].distinct("category"))
+    return success(categories=categories, total=len(categories))
+
+
 @sales_bp.route("/import-csv", methods=["POST"])
 @token_required
 def import_csv():
