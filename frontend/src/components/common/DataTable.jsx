@@ -13,6 +13,7 @@ export default function DataTable({
   sortBy,
   sortOrder,
   onSort,
+  onRowClick,
   pagination,
   emptyMessage = "No data available",
 }) {
@@ -62,7 +63,10 @@ export default function DataTable({
               data.map((row, i) => (
                 <tr
                   key={row.id || i}
-                  className={i % 2 ? "bg-gray-50" : "bg-white"}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  className={`${i % 2 ? "bg-gray-50" : "bg-white"} ${
+                    onRowClick ? "cursor-pointer hover:bg-blue-50" : ""
+                  }`}
                 >
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3 text-gray-700">
