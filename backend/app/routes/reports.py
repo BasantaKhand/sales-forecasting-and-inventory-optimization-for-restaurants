@@ -306,6 +306,80 @@ def category_performance():
     return success(data=result)
 
 
+@reports_bp.route("/bottom-items", methods=["GET"])
+@token_required
+def bottom_items():
+    """Least-selling items by quantity (candidates to drop from the menu)."""
+    args = request.args
+    try:
+        limit = min(max(int(args.get("limit", 10)), 1), 50)
+    except ValueError:
+        limit = 10
+    match = _year_match(args)
+
+    pipeline = [
+        {"$match": match} if match else {"$match": {}},
+        {"$group": {
+            "_id": "$item_name",
+            "total_qty": {"$sum": "$quantity"},
+            "total_revenue": {"$sum": "$total_price_npr"},
+        }},
+        {"$sort": {"total_qty": 1}},
+        {"$limit": limit},
+        {"$project": {
+            "_id": 0, "item_name": "$_id", "total_qty": 1,
+            "total_revenue": {"$round": ["$total_revenue", 2]},
+        }},
+    ]
+    return success(data=list(_sales().aggregate(pipeline)))
+
+
+@reports_bp.route("/category-trends", methods=["GET"])
+@token_required
+def category_trends():
+    """Monthly revenue series for the top-N categories (for multi-line chart)."""
+    args = request.args
+    match = _year_match(args)
+    try:
+        top = min(max(int(args.get("top", 5)), 1), 10)
+    except ValueError:
+        top = 5
+    sales = _sales()
+
+    top_cats = [
+        r["_id"]
+        for r in sales.aggregate([
+            {"$match": match} if match else {"$match": {}},
+            {"$group": {"_id": "$category", "rev": {"$sum": "$total_price_npr"}}},
+            {"$sort": {"rev": -1}},
+            {"$limit": top},
+        ])
+    ]
+
+    cat_match = dict(match)
+    cat_match["category"] = {"$in": top_cats}
+    rows = list(sales.aggregate([
+        {"$match": cat_match},
+        {"$group": {
+            "_id": {
+                "category": "$category",
+                "month": {"$dateToString": {"format": "%Y-%m", "date": "$date"}},
+            },
+            "rev": {"$sum": "$total_price_npr"},
+        }},
+    ]))
+
+    months = sorted({r["_id"]["month"] for r in rows})
+    lookup = {
+        (r["_id"]["category"], r["_id"]["month"]): round(r["rev"], 2) for r in rows
+    }
+    series = [
+        {"category": c, "values": [lookup.get((c, m), 0) for m in months]}
+        for c in top_cats
+    ]
+    return success(months=months, series=series)
+
+
 @reports_bp.route("/overview", methods=["GET"])
 @token_required
 def overview():
