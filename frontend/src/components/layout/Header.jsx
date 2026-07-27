@@ -2,9 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HiBars3, HiBell, HiChevronDown } from "react-icons/hi2";
 import { useAuth } from "../../hooks/useAuth";
+import { useAlerts } from "../../hooks/useAlerts";
 
-export default function Header({ title, onMenuClick, alertCount = 0 }) {
+export default function Header({ title, onMenuClick }) {
   const { user, logout } = useAuth();
+  const { counts } = useAlerts();
+  const alertCount = counts.critical + counts.warning;
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
