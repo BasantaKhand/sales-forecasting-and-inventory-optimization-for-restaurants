@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
+import { AlertsProvider } from "./context/AlertsContext";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 
@@ -26,7 +27,9 @@ export default function App() {
         <Route
           element={
             <ProtectedRoute>
-              <Layout />
+              <AlertsProvider>
+                <Layout />
+              </AlertsProvider>
             </ProtectedRoute>
           }
         >
