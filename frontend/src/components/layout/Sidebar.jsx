@@ -6,6 +6,7 @@ import {
   HiOutlineCube,
   HiOutlineDocumentChartBar,
   HiOutlineBell,
+  HiOutlineCog6Tooth,
 } from "react-icons/hi2";
 
 const NAV = [
@@ -15,6 +16,7 @@ const NAV = [
   { to: "/inventory", label: "Inventory", icon: HiOutlineCube },
   { to: "/reports", label: "Reports", icon: HiOutlineDocumentChartBar },
   { to: "/alerts", label: "Alerts", icon: HiOutlineBell },
+  { to: "/settings", label: "Settings", icon: HiOutlineCog6Tooth },
 ];
 
 export default function Sidebar({ open, onClose }) {
