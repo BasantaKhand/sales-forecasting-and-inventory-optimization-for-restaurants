@@ -88,6 +88,36 @@ def login():
     return success(access_token=access_token, user=public_user(user))
 
 
+@auth_bp.route("/change-password", methods=["POST"])
+@token_required
+def change_password():
+    """Change the current user's password after verifying the old one."""
+    data = request.get_json(silent=True) or {}
+    current = data.get("current_password") or ""
+    new = data.get("new_password") or ""
+
+    if len(new) < 6:
+        return error("New password must be at least 6 characters", 400)
+
+    try:
+        oid = ObjectId(get_current_user_id())
+    except (InvalidId, TypeError):
+        return error("Invalid token identity", 401)
+
+    users = _users()
+    user = users.find_one({"_id": oid})
+    if not user:
+        return error("User not found", 404)
+    if not bcrypt.checkpw(
+        current.encode("utf-8"), user["password_hash"].encode("utf-8")
+    ):
+        return error("Current password is incorrect", 400)
+
+    new_hash = bcrypt.hashpw(new.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    users.update_one({"_id": oid}, {"$set": {"password_hash": new_hash}})
+    return success(message="Password changed successfully")
+
+
 @auth_bp.route("/me", methods=["GET"])
 @token_required
 def me():

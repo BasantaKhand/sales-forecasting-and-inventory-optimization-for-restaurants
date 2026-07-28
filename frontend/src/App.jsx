@@ -13,6 +13,7 @@ import Forecast from "./pages/Forecast";
 import Inventory from "./pages/Inventory";
 import Reports from "./pages/Reports";
 import Alerts from "./pages/Alerts";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
 
         {/* Default + fallback */}

@@ -10,11 +10,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import api from "../../services/api";
 import ChartCard from "../common/ChartCard";
 import DataTable from "../common/DataTable";
 import LoadingSpinner from "../common/LoadingSpinner";
 import SearchableSelect from "../common/SearchableSelect";
+import { useReports } from "../../hooks/useReports";
 import { formatNPR, formatNumber } from "../../utils/format";
 
 function HBar({ title, data, dataKey, color, fmt }) {
@@ -34,6 +34,7 @@ function HBar({ title, data, dataKey, color, fmt }) {
 }
 
 export default function ItemPerformanceTab() {
+  const reports = useReports();
   const [top, setTop] = useState(null);
   const [bottom, setBottom] = useState([]);
   const [items, setItems] = useState([]);
@@ -44,25 +45,25 @@ export default function ItemPerformanceTab() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.get("/reports/top-items", { params: { limit: 20 } }),
-      api.get("/reports/bottom-items", { params: { limit: 10 } }),
-      api.get("/sales/items"),
+      reports.getTopItems(20),
+      reports.getBottomItems(10),
+      reports.getItems(),
     ])
       .then(([t, b, it]) => {
-        setTop(t.data);
-        setBottom(b.data.data || []);
-        setItems(it.data.items || []);
+        setTop(t);
+        setBottom(b.data || []);
+        setItems(it.items || []);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [reports]);
 
   useEffect(() => {
     if (!selected) return;
-    api
-      .get("/sales/daily-totals", { params: { item_name: selected } })
-      .then((r) => {
+    reports
+      .getItemDailyTotals(selected)
+      .then((res) => {
         const byMonth = {};
-        (r.data.data || []).forEach((d) => {
+        (res.data || []).forEach((d) => {
           const m = d.date.slice(0, 7);
           byMonth[m] = (byMonth[m] || 0) + d.revenue;
         });
@@ -73,7 +74,7 @@ export default function ItemPerformanceTab() {
         );
       })
       .catch(() => setItemSeries([]));
-  }, [selected]);
+  }, [reports, selected]);
 
   const bottomColumns = useMemo(
     () => [

@@ -12,10 +12,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import api from "../../services/api";
 import ChartCard from "../common/ChartCard";
 import DataTable from "../common/DataTable";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { useReports } from "../../hooks/useReports";
 import { formatNPR, formatNumber } from "../../utils/format";
 
 const COLORS = [
@@ -25,6 +25,7 @@ const COLORS = [
 const YEARS = [2022, 2023, 2024];
 
 export default function CategoryAnalysisTab() {
+  const reports = useReports();
   const [year, setYear] = useState(2024);
   const [perf, setPerf] = useState([]);
   const [trends, setTrends] = useState(null);
@@ -35,15 +36,15 @@ export default function CategoryAnalysisTab() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.get("/reports/category-performance", { params: { year } }),
-      api.get("/reports/category-trends", { params: { year, top: 5 } }),
+      reports.getCategoryPerformance(year),
+      reports.getCategoryTrends(year, 5),
     ])
       .then(([p, t]) => {
-        setPerf(p.data.data || []);
-        setTrends(t.data);
+        setPerf(p.data || []);
+        setTrends(t);
       })
       .finally(() => setLoading(false));
-  }, [year]);
+  }, [reports, year]);
 
   if (loading || !trends) return <LoadingSpinner label="Loading categories..." />;
 

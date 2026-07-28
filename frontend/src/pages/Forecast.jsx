@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import api from "../services/api";
+import { useEffect, useState } from "react";
+import { useForecast } from "../hooks/useForecast";
 import ForecastControls from "../components/forecast/ForecastControls";
 import ForecastChart from "../components/forecast/ForecastChart";
 import ModelComparisonPanel from "../components/forecast/ModelComparisonPanel";
@@ -9,6 +8,8 @@ import InsightsPanel from "../components/forecast/InsightsPanel";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 
 export default function Forecast() {
+  const { items, categories, loading, single, compare, mode, generateForecast } =
+    useForecast();
   const [config, setConfig] = useState({
     type: "overall",
     item: "",
@@ -16,66 +17,12 @@ export default function Forecast() {
     periods: 14,
     model: "prophet",
   });
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [single, setSingle] = useState(null);
-  const [compare, setCompare] = useState(null);
-  const [mode, setMode] = useState("single");
-
-  // Load dropdown options once.
-  useEffect(() => {
-    api.get("/sales/items").then((r) => setItems(r.data.items || [])).catch(() => {});
-    api
-      .get("/sales/categories")
-      .then((r) => setCategories(r.data.categories || []))
-      .catch(() => {});
-  }, []);
 
   const unit = config.type === "item" ? "units" : "NPR";
 
-  const generate = useCallback(async () => {
-    if (config.type === "item" && !config.item) {
-      toast.error("Please select an item");
-      return;
-    }
-    if (config.type === "category" && !config.category) {
-      toast.error("Please select a category");
-      return;
-    }
-
-    setLoading(true);
-    setSingle(null);
-    setCompare(null);
-    try {
-      if (config.model === "compare") {
-        const params = { periods: config.periods };
-        if (config.type === "item") params.item = config.item;
-        if (config.type === "category") params.category = config.category;
-        const { data } = await api.get("/forecast/compare", { params });
-        setCompare(data);
-        setMode("compare");
-      } else {
-        const params = { periods: config.periods, model: config.model };
-        let url = "/forecast/overall";
-        if (config.type === "item")
-          url = `/forecast/item/${encodeURIComponent(config.item)}`;
-        else if (config.type === "category")
-          url = `/forecast/category/${encodeURIComponent(config.category)}`;
-        const { data } = await api.get(url, { params });
-        setSingle(data);
-        setMode("single");
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to generate forecast");
-    } finally {
-      setLoading(false);
-    }
-  }, [config]);
-
   // Auto-generate a default overall forecast on first load.
   useEffect(() => {
-    generate();
+    generateForecast(config);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -98,7 +45,7 @@ export default function Forecast() {
         items={items}
         categories={categories}
         onChange={setConfig}
-        onGenerate={generate}
+        onGenerate={() => generateForecast(config)}
         loading={loading}
       />
 
@@ -122,9 +69,7 @@ export default function Forecast() {
         )}
       </div>
 
-      {mode === "compare" && compare && (
-        <ModelComparisonPanel compare={compare} />
-      )}
+      {mode === "compare" && compare && <ModelComparisonPanel compare={compare} />}
 
       {mode === "single" && single && (
         <>
