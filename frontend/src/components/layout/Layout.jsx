@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import ErrorBoundary from "../common/ErrorBoundary";
 
 const TITLES = {
   "/dashboard": "Dashboard",
@@ -25,7 +26,9 @@ export default function Layout() {
       <div className="flex h-full flex-col md:ml-[250px]">
         <Header title={title} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>
