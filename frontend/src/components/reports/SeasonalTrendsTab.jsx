@@ -11,9 +11,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import api from "../../services/api";
 import ChartCard from "../common/ChartCard";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { useReports } from "../../hooks/useReports";
 import { formatNPR } from "../../utils/format";
 
 const MONTH_NAMES = [
@@ -22,16 +22,17 @@ const MONTH_NAMES = [
 ];
 
 export default function SeasonalTrendsTab() {
+  const reports = useReports();
   const [trends, setTrends] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    api
-      .get("/reports/trends")
-      .then((r) => setTrends(r.data))
+    reports
+      .getTrends()
+      .then((d) => setTrends(d))
       .finally(() => setLoading(false));
-  }, []);
+  }, [reports]);
 
   if (loading || !trends) return <LoadingSpinner label="Loading trends..." />;
 
