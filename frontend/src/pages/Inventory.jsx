@@ -1,11 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import {
-  HiPlus,
-  HiSparkles,
-  HiArrowPath,
-} from "react-icons/hi2";
-import api from "../services/api";
+import { HiPlus, HiSparkles, HiArrowPath } from "react-icons/hi2";
+import { useInventory } from "../hooks/useInventory";
 import DataTable from "../components/common/DataTable";
 import InventoryStatusCards from "../components/inventory/InventoryStatusCards";
 import InventoryItemModal from "../components/inventory/InventoryItemModal";
@@ -15,42 +11,15 @@ import StatusBadge from "../components/inventory/StatusBadge";
 import { formatNPR, formatNumber, formatDate } from "../utils/format";
 
 export default function Inventory() {
-  const [items, setItems] = useState([]);
-  const [alerts, setAlerts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [allItems, setAllItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { items, alerts, categories, allItems, loading, reload, updateItem, optimize } =
+    useInventory();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-
   const [optimizing, setOptimizing] = useState(false);
   const [optimizeResult, setOptimizeResult] = useState(null);
-
   const [sortBy, setSortBy] = useState("item_name");
   const [sortOrder, setSortOrder] = useState("asc");
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [inv, alertRes] = await Promise.all([
-        api.get("/inventory"),
-        api.get("/inventory/alerts"),
-      ]);
-      setItems(inv.data.data || []);
-      setAlerts(alertRes.data.data || []);
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to load inventory");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-    api.get("/sales/categories").then((r) => setCategories(r.data.categories || [])).catch(() => {});
-    api.get("/sales/items").then((r) => setAllItems(r.data.items || [])).catch(() => {});
-  }, [loadData]);
 
   const sortedItems = useMemo(() => {
     const copy = [...items];
@@ -75,7 +44,7 @@ export default function Inventory() {
     setOptimizeResult({ data: [] });
     setOptimizing(true);
     try {
-      const { data } = await api.post("/inventory/optimize");
+      const { data } = await optimize();
       setOptimizeResult(data);
     } catch (err) {
       toast.error(err.response?.data?.error || "Optimization failed");
@@ -87,11 +56,11 @@ export default function Inventory() {
 
   async function applySuggestion(s) {
     try {
-      await api.put(`/inventory/${s.id}`, {
+      await updateItem(s.id, {
         current_stock: Number(s.current_stock) + Number(s.suggested_order_qty),
       });
       toast.success(`Restocked ${s.item_name}`);
-      await loadData();
+      await reload();
       await runOptimize();
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to apply");
@@ -102,7 +71,6 @@ export default function Inventory() {
     setEditing(null);
     setModalOpen(true);
   }
-
   function openEdit(item) {
     setEditing(item);
     setModalOpen(true);
@@ -137,7 +105,7 @@ export default function Inventory() {
           <HiSparkles /> Auto-Optimize
         </button>
         <button
-          onClick={loadData}
+          onClick={reload}
           className="flex items-center gap-1 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
         >
           <HiArrowPath /> Refresh
@@ -178,7 +146,7 @@ export default function Inventory() {
         items={allItems}
         categories={categories}
         onClose={() => setModalOpen(false)}
-        onSaved={loadData}
+        onSaved={reload}
       />
     </div>
   );
