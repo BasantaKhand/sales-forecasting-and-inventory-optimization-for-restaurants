@@ -8,16 +8,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import api from "../../services/api";
 import ChartCard from "../common/ChartCard";
 import DataTable from "../common/DataTable";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { useReports } from "../../hooks/useReports";
 import { formatNPR, formatNumber } from "../../utils/format";
 
 const YEARS = [2022, 2023, 2024];
 const PERIODS = ["daily", "weekly", "monthly"];
 
 export default function RevenueTab() {
+  const reports = useReports();
   const [period, setPeriod] = useState("monthly");
   const [year, setYear] = useState(2024);
   const [data, setData] = useState(null);
@@ -28,21 +29,21 @@ export default function RevenueTab() {
     let active = true;
     setLoading(true);
     Promise.all([
-      api.get("/reports/revenue", { params: { period, year } }),
-      api.get("/reports/revenue", { params: { period: "monthly", year: year - 1 } }),
+      reports.getRevenue(period, year),
+      reports.getRevenue("monthly", year - 1),
     ])
       .then(([cur, prev]) => {
         if (!active) return;
-        setData(cur.data);
-        const curTotal = (cur.data.values || []).reduce((a, b) => a + b, 0);
-        const prevTotal = (prev.data.values || []).reduce((a, b) => a + b, 0);
+        setData(cur);
+        const curTotal = (cur.values || []).reduce((a, b) => a + b, 0);
+        const prevTotal = (prev.values || []).reduce((a, b) => a + b, 0);
         setYoy(prevTotal ? ((curTotal - prevTotal) / prevTotal) * 100 : null);
       })
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [period, year]);
+  }, [reports, period, year]);
 
   if (loading || !data) return <LoadingSpinner label="Loading revenue..." />;
 
