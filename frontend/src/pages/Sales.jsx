@@ -1,19 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
-import api from "../services/api";
+import { useSales } from "../hooks/useSales";
 import DataTable from "../components/common/DataTable";
 import SalesFilters from "../components/sales/SalesFilters";
 import SummaryBar from "../components/sales/SummaryBar";
 import ImportCsvModal from "../components/sales/ImportCsvModal";
 import { formatNPR, formatDate } from "../utils/format";
-
-const EMPTY_FILTERS = {
-  start_date: "",
-  end_date: "",
-  category: "",
-  meal_period: "",
-  search: "",
-};
 
 const COLUMNS = [
   { key: "order_id", label: "Order ID", sortable: true },
@@ -29,94 +21,19 @@ const COLUMNS = [
 ];
 
 export default function Sales() {
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(25);
-  const [sortBy, setSortBy] = useState("date");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const {
+    filters, changeFilters, clearFilters,
+    page, setPage, limit, changeLimit,
+    sortBy, sortOrder, sortByColumn,
+    data, total, pages, summary, loading,
+    categories, fetchData, exportRows,
+  } = useSales();
 
-  const [data, setData] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [pages, setPages] = useState(1);
-  const [summary, setSummary] = useState({ total_revenue: 0, total_quantity: 0 });
-  const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
-
-  // Build query params, dropping empty values. Search maps to item_name.
-  const queryParams = useMemo(() => {
-    const p = {};
-    if (filters.start_date) p.start_date = filters.start_date;
-    if (filters.end_date) p.end_date = filters.end_date;
-    if (filters.category) p.category = filters.category;
-    if (filters.meal_period) p.meal_period = filters.meal_period;
-    if (filters.search) p.item_name = filters.search;
-    return p;
-  }, [filters]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [sales, sum] = await Promise.all([
-        api.get("/sales", {
-          params: { ...queryParams, page, limit, sort_by: sortBy, sort_order: sortOrder },
-        }),
-        api.get("/sales/summary", { params: queryParams }),
-      ]);
-      setData(sales.data.data || []);
-      setTotal(sales.data.total || 0);
-      setPages(sales.data.pages || 1);
-      setSummary(sum.data);
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Failed to load sales");
-    } finally {
-      setLoading(false);
-    }
-  }, [queryParams, page, limit, sortBy, sortOrder]);
-
-  useEffect(() => {
-    const id = setTimeout(fetchData, filters.search ? 400 : 0);
-    return () => clearTimeout(id);
-  }, [fetchData, filters.search]);
-
-  // Categories for the filter dropdown (reuse the reports endpoint).
-  const [categories, setCategories] = useState([]);
-  useEffect(() => {
-    api
-      .get("/reports/category-performance")
-      .then((res) =>
-        setCategories(
-          (res.data.data || []).map((c) => c.category).sort()
-        )
-      )
-      .catch(() => setCategories([]));
-  }, []);
-
-  function handleFilterChange(next) {
-    setFilters(next);
-    setPage(1);
-  }
-
-  function handleSort(key) {
-    if (sortBy === key) {
-      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(key);
-      setSortOrder("asc");
-    }
-    setPage(1);
-  }
-
-  function clearFilters() {
-    setFilters(EMPTY_FILTERS);
-    setPage(1);
-  }
 
   async function exportCsv() {
     try {
-      const res = await api.get("/sales", {
-        params: { ...queryParams, page: 1, limit: 5000, sort_by: sortBy, sort_order: sortOrder },
-      });
-      const rows = res.data.data || [];
+      const rows = await exportRows();
       if (!rows.length) {
         toast("No data to export");
         return;
@@ -146,7 +63,7 @@ export default function Sales() {
       <SalesFilters
         filters={filters}
         categories={categories}
-        onChange={handleFilterChange}
+        onChange={changeFilters}
         onClear={clearFilters}
         onImport={() => setImportOpen(true)}
         onExport={exportCsv}
@@ -158,10 +75,7 @@ export default function Sales() {
         revenue={summary.total_revenue}
         quantity={summary.total_quantity}
         limit={limit}
-        onLimitChange={(n) => {
-          setLimit(n);
-          setPage(1);
-        }}
+        onLimitChange={changeLimit}
       />
 
       {loading ? (
@@ -176,7 +90,7 @@ export default function Sales() {
           data={data}
           sortBy={sortBy}
           sortOrder={sortOrder}
-          onSort={handleSort}
+          onSort={sortByColumn}
           pagination={{ page, pages, total, onPageChange: setPage }}
           emptyMessage="No sales match the current filters"
         />
